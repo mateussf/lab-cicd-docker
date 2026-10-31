@@ -1,0 +1,8 @@
+# Segredos: só os .env.example são versionados
+.env
+
+# Dependências e artefatos gerados
+vendor/
+node_modules/
+__pycache__/
+*.log

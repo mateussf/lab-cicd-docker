@@ -1,0 +1,20 @@
+name: app1
+
+services:
+  # Sem "ports": só é alcançável pelo proxy, dentro da rede "lab"
+  app1:
+    build: ../php
+    container_name: app1
+    volumes:
+      - .:/var/www/html
+    env_file: .env
+    extra_hosts:
+      # No Docker Desktop esse nome já existe; num servidor Linux é preciso declarar
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - lab
+
+networks:
+  lab:
+    external: true

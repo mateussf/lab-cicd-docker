@@ -1,0 +1,29 @@
+name: jenkins
+
+services:
+  jenkins:
+    build: .
+    container_name: jenkins
+    # root para conseguir usar o docker.sock. Em produção, prefira um usuário no grupo
+    # "docker" ou agentes de build separados: quem controla o socket controla o host inteiro.
+    user: root
+    env_file:
+      - .env
+      - ../gitlab/.env
+    environment:
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc.yaml
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false
+    volumes:
+      - home:/var/jenkins_home
+      - ./casc.yaml:/var/jenkins_home/casc.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - lab
+
+volumes:
+  home:
+
+networks:
+  lab:
+    external: true

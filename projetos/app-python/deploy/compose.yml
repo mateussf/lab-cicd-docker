@@ -1,0 +1,25 @@
+# Como o app roda no "servidor". Usado pelo Jenkins no estágio Deploy.
+# Rollback manual: TAG=<build anterior> docker compose -f deploy/compose.yml up -d
+name: app-python
+
+services:
+  app-python:
+    image: localhost:5050/root/app-python:${TAG:?informe a TAG da imagem}
+    container_name: app-python
+    environment:
+      APP_VERSAO: ${TAG}
+      # Banco fora da rede Docker (no PC: o MySQL do Windows; na empresa: o servidor do ERP)
+      DB_HOST: host.docker.internal
+      DB_PORT: "3306"
+      DB_NAME: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - lab
+
+networks:
+  lab:
+    external: true

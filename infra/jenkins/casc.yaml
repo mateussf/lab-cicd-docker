@@ -1,0 +1,74 @@
+# Jenkins Configuration as Code: toda a configuração vive aqui, versionável,
+# em vez de cliques na interface. ${VAR} vem das variáveis de ambiente (.env).
+jenkins:
+  systemMessage: "Lab rede_docker: pipelines disparados por push no GitLab"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: ${JENKINS_ADMIN_PASSWORD}
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: http://jenkins.localhost/
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              id: gitlab-root
+              description: "Token do GitLab: clone do código e login no registry"
+              scope: GLOBAL
+              username: root
+              password: ${GITLAB_ROOT_TOKEN}
+          - usernamePassword:
+              id: banco-externo
+              description: "Banco externo usado pelos apps em produção"
+              scope: GLOBAL
+              username: ${DB_USER}
+              password: ${DB_PASSWORD:-}
+          - string:
+              id: app3-key
+              description: "APP_KEY do Laravel (app3) em produção"
+              scope: GLOBAL
+              secret: ${APP3_KEY:-}
+
+jobs:
+  - script: >
+      ['app-python', 'app3'].each { nome ->
+        pipelineJob(nome) {
+          description('Pipeline do projeto ' + nome + ' (Jenkinsfile no repositório)')
+          properties {
+            pipelineTriggers {
+              triggers {
+                gitlab {
+                  triggerOnPush(true)
+                  triggerOnMergeRequest(false)
+                  branchFilterType('All')
+                  secretToken('${WEBHOOK_TOKEN}')
+                }
+              }
+            }
+          }
+          definition {
+            cpsScm {
+              scm {
+                git {
+                  remote {
+                    url('http://gitlab/root/' + nome + '.git')
+                    credentials('gitlab-root')
+                  }
+                  branch('*/main')
+                }
+              }
+              scriptPath('Jenkinsfile')
+            }
+          }
+        }
+      }

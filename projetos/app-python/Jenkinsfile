@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = 'localhost:5050'
+        IMAGEM   = 'localhost:5050/root/app-python'
+        // Cada build gera uma tag única: é ela que permite saber o que está rodando e voltar atrás
+        TAG      = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Testes') {
+            steps {
+                sh 'docker build --target testes -t app-python-testes .'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Sem os atestados (provenance/SBOM) que o BuildKit anexa por padrão:
+                // o registry do GitLab recusa o manifesto que os referencia ("blob unknown")
+                sh 'docker build --provenance=false --sbom=false --target final -t $IMAGEM:$TAG .'
+            }
+        }
+
+        stage('Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'gitlab-root', usernameVariable: 'REGISTRY_USUARIO', passwordVariable: 'REGISTRY_SENHA')]) {
+                    sh 'echo "$REGISTRY_SENHA" | docker login $REGISTRY -u "$REGISTRY_USUARIO" --password-stdin'
+                    sh 'docker push $IMAGEM:$TAG'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'banco-externo', usernameVariable: 'DB_USER', passwordVariable: 'DB_PASSWORD')]) {
+                    sh 'docker compose -f deploy/compose.yml up -d'
+                }
+            }
+        }
+    }
+}

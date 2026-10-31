@@ -1,0 +1,46 @@
+name: gitlab
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:19.5.3-ce.0
+    container_name: gitlab
+    hostname: gitlab
+    env_file: .env
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        # Endereço pelo qual as pessoas acessam (passando pelo proxy)
+        external_url 'http://gitlab.localhost'
+        # Registry de imagens: acessado pelo Docker daemon do host, por isso tem porta própria
+        registry_external_url 'http://localhost:5050'
+        # O daemon pede o token de acesso ao registry neste endereço. Ele não resolve
+        # gitlab.localhost, então vai em http://localhost/jwt/auth e o proxy repassa ao GitLab.
+        # (Numa empresa, GitLab e registry têm nomes de DNS reais e isso não é necessário.)
+        registry['token_realm'] = 'http://localhost'
+        gitlab_rails['initial_root_password'] = ENV['GITLAB_ROOT_PASSWORD']
+        # Enxugando para caber numa máquina de estudo (~2,5-3 GB em vez de ~4+)
+        prometheus_monitoring['enable'] = false
+        puma['worker_processes'] = 0
+        sidekiq['concurrency'] = 5
+        gitlab_kas['enable'] = false
+    ports:
+      # Só o registry é publicado; a interface web passa pelo proxy (gitlab.localhost)
+      - "5050:5050"
+    volumes:
+      - config:/etc/gitlab
+      - logs:/var/log/gitlab
+      - data:/var/opt/gitlab
+    shm_size: 256m
+    restart: unless-stopped
+    # Dentro da rede, os outros containers usam o nome "gitlab" (ex.: http://gitlab/root/app.git).
+    # "gitlab.localhost" não serve lá dentro: o curl/git trata qualquer *.localhost como 127.0.0.1.
+    networks:
+      - lab
+
+volumes:
+  config:
+  logs:
+  data:
+
+networks:
+  lab:
+    external: true

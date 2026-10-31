@@ -1,0 +1,19 @@
+name: proxy
+
+services:
+  # Único ponto de entrada HTTP do "servidor": encaminha pelo cabeçalho Host
+  proxy:
+    build: .
+    container_name: proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./vhosts.conf:/usr/local/apache2/conf/extra/vhosts.conf:ro
+    restart: unless-stopped
+    networks:
+      - lab
+
+# Rede criada uma única vez (docker network create lab) e compartilhada por todos os sistemas
+networks:
+  lab:
+    external: true

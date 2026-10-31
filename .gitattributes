@@ -1,0 +1,4 @@
+# LF no repositório: Dockerfiles, scripts e configs rodam em Linux (containers)
+* text=auto eol=lf
+# Scripts do Windows mantêm CRLF
+*.ps1 text eol=crlf
